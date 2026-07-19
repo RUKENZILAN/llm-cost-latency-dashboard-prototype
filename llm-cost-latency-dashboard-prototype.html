@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Build Ledger — prompt-eval-suite (PROTOTYPE)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root{
+  --bg:#0F1117;
+  --panel:#171A23;
+  --panel-raised:#1D212C;
+  --line:#2A2E3A;
+  --line-soft:#22252F;
+  --text:#E8E6E1;
+  --muted:#8B8F9C;
+  --dim:#5B5F6C;
+  --amber:#E8A33D;
+  --amber-dim:#4A3A21;
+  --teal:#4FD1C5;
+  --teal-dim:#1E3A38;
+  --rose:#E5677E;
+  --green:#6FCF97;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -10%, #1a1e2a 0%, transparent 60%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  padding:32px 24px 64px;
+  min-height:100vh;
+}
+
+.wrap{max-width:1080px; margin:0 auto;}
+
+/* ---------- header / build bar ---------- */
+.topbar{display:flex; justify-content:flex-end; margin-bottom:14px;}
+.langtoggle{
+  display:flex; background:var(--panel); border:1px solid var(--line);
+  border-radius:8px; overflow:hidden; font-family:'JetBrains Mono',monospace;
+  font-size:12px; font-weight:600;
+}
+.langtoggle button{
+  background:transparent; border:none; color:var(--dim); padding:7px 14px;
+  cursor:pointer; letter-spacing:.04em; transition:color .15s, background .15s;
+}
+.langtoggle button.active{background:var(--panel-raised); color:var(--teal);}
+.langtoggle button:not(.active):hover{color:var(--muted);}
+
+.protobadge{
+  display:flex; align-items:center; gap:7px;
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+  letter-spacing:.08em; color:var(--amber);
+  background:var(--amber-dim); border:1px solid #5C4626;
+  padding:6px 12px; border-radius:8px; margin-right:10px;
+}
+.protobadge .pulse{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+
+.buildbar{
+  display:flex; align-items:center; gap:14px;
+  padding:16px 20px;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--amber);
+  box-shadow:0 0 0 4px var(--amber-dim); flex-shrink:0;}
+.buildbar .id{font-family:'JetBrains Mono',monospace; font-weight:600; font-size:13.5px; color:var(--text);}
+.buildbar .sep{color:var(--dim);}
+.buildbar .hash{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--muted);}
+.buildbar .suite{font-size:13px; color:var(--muted); margin-left:auto;}
+.buildbar .time{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--dim);}
+.subline{
+  font-size:13px; color:var(--muted); padding:2px 4px 20px; line-height:1.5;
+}
+.subline b{color:var(--text); font-weight:500;}
+
+/* ---------- section label ---------- */
+.seclabel{
+  font-family:'Space Grotesk',sans-serif;
+  font-size:11.5px; font-weight:600; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--dim);
+  margin:28px 0 10px 2px;
+}
+
+/* ---------- grid ---------- */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+@media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:20px 22px 22px;
+}
+.card h3{
+  font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600;
+  display:flex; align-items:center; gap:8px; margin-bottom:14px;
+}
+
+/* ---------- budget card ---------- */
+.pct-row{display:flex; align-items:baseline; gap:10px; margin-bottom:4px;}
+.pct{font-family:'JetBrains Mono',monospace; font-size:38px; font-weight:700; color:var(--amber); line-height:1;}
+.pct-label{font-size:12.5px; color:var(--muted);}
+.cost-line{font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--muted); margin-bottom:16px;}
+.cost-line .old{color:var(--dim); text-decoration:line-through;}
+.cost-line .new{color:var(--text); font-weight:600;}
+
+.diffledger{
+  border-top:1px solid var(--line-soft);
+  padding-top:12px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+}
+.diffledger .drow{
+  display:grid; grid-template-columns:1fr auto auto; gap:10px;
+  padding:5px 0; color:var(--muted); align-items:center;
+}
+.diffledger .drow .name{color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.diffledger .drow .delta{text-align:right; font-weight:600;}
+.diffledger .drow .delta.up{color:var(--rose);}
+.diffledger .drow .delta.down{color:var(--green);}
+.diffledger .drow .tok{color:var(--dim); text-align:right; font-size:11.5px;}
+
+/* ---------- latency card ---------- */
+.lat-row{margin-bottom:16px;}
+.lat-row:last-child{margin-bottom:0;}
+.lat-head{display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); margin-bottom:6px;}
+.lat-head .val{color:var(--text); font-weight:600;}
+.lat-head .diff{color:var(--rose); margin-left:6px;}
+.barbg{height:8px; background:var(--line-soft); border-radius:4px; overflow:hidden; position:relative;}
+.barfill{height:100%; border-radius:4px; background:linear-gradient(90deg,var(--teal),#3AA89E);}
+.barfill.warn{background:linear-gradient(90deg,var(--amber),#C4822C);}
+.baseline-tick{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--dim);}
+
+/* ---------- matrix table ---------- */
+.matrix-wrap{overflow-x:auto;}
+table{width:100%; border-collapse:collapse; font-size:13px;}
+thead th{
+  text-align:left; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:11px;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--dim);
+  padding:0 14px 10px; border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+thead th.num, tbody td.num{text-align:right;}
+tbody td{padding:12px 14px; border-bottom:1px solid var(--line-soft); font-family:'JetBrains Mono',monospace; color:var(--muted); white-space:nowrap;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr.active{background:var(--panel-raised);}
+.model-name{font-family:'Inter',sans-serif; color:var(--text); font-weight:600; display:flex; align-items:center; gap:8px;}
+.model-name .swatch{width:8px;height:8px;border-radius:2px; flex-shrink:0;}
+.badge{
+  font-family:'Inter',sans-serif; font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:5px;
+  letter-spacing:.03em;
+}
+.badge.current{background:var(--teal-dim); color:var(--teal);}
+.badge.cheapest{background:#1E3826; color:var(--green);}
+.score{font-weight:700;}
+.score.good{color:var(--green);}
+.score.mid{color:var(--amber);}
+.score.low{color:var(--rose);}
+
+/* ---------- footer note ---------- */
+.foot{
+  margin-top:28px; padding:14px 18px; border:1px dashed var(--line);
+  border-radius:8px; font-size:12.5px; color:var(--dim); line-height:1.6;
+}
+.foot b{color:var(--muted);}
+
+[data-en]{display:none;}
+html.lang-en [data-tr]{display:none;}
+html.lang-en [data-en]{display:inline;}
+html.lang-en [data-en].block{display:block;}
+html.lang-en [data-en].grid-row{display:grid;}
+html.lang-en [data-en].flex-row{display:flex;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="protobadge">
+      <span class="pulse"></span>
+      <span data-tr>PROTOTİP — ÖRNEK VERİ</span><span data-en>PROTOTYPE — SAMPLE DATA</span>
+    </div>
+    <div class="langtoggle">
+      <button id="btn-tr" class="active" onclick="setLang('tr')">TR</button>
+      <button id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+
+  <div class="buildbar">
+    <span class="dot"></span>
+    <span class="id">BUILD #4127</span>
+    <span class="sep">/</span>
+    <span class="hash">main@a3f9c21</span>
+    <span class="suite"><span data-tr>prompt-eval-suite · 86 senaryo</span><span data-en>prompt-eval-suite · 86 scenarios</span></span>
+    <span class="time"><span data-tr>19 Tem 2026, 14:32</span><span data-en>Jul 19 2026, 14:32</span></span>
+  </div>
+  <div class="subline">
+    <span data-tr>PR #892 — <b>"checkout-flow-v3: yönlendirme promptu genişletildi"</b> için otomatik test koşumu tamamlandı. Aşağıdaki karşılaştırma bir önceki main koşumuna göredir.</span>
+    <span data-en>Automated test run completed for PR #892 — <b>"checkout-flow-v3: expanded the routing prompt."</b> The comparison below is against the previous main run.</span>
+  </div>
+
+  <div class="grid2">
+
+    <!-- BÜTÇE AŞIM UYARISI -->
+    <div class="card">
+      <h3>⚠ <span data-tr>Bütçe Aşım Uyarısı</span><span data-en>Budget Overrun Alert</span></h3>
+      <div class="pct-row">
+        <span class="pct">+23.4%</span>
+        <span class="pct-label"><span data-tr>tahmini aylık maliyet artışı</span><span data-en>estimated increase in monthly cost</span></span>
+      </div>
+      <div class="cost-line">
+        <span data-tr>aylık projeksiyon:</span><span data-en>monthly projection:</span> <span class="old">$340</span> → <span class="new">$419</span>
+      </div>
+      <div class="diffledger">
+        <div class="drow">
+          <span class="name">checkout_routing_v3</span>
+          <span class="delta up">+41%</span>
+          <span class="tok">612→864 <span data-tr>çıktı tkn</span><span data-en>output tok</span></span>
+        </div>
+        <div class="drow">
+          <span class="name">cart_error_message</span>
+          <span class="delta up">+18%</span>
+          <span class="tok">240→283 <span data-tr>çıktı tkn</span><span data-en>output tok</span></span>
+        </div>
+        <div class="drow">
+          <span class="name">payment_confirm_summary</span>
+          <span class="delta down">−6%</span>
+          <span class="tok">190→179 <span data-tr>çıktı tkn</span><span data-en>output tok</span></span>
+        </div>
+        <div class="drow">
+          <span class="name">+ 83 <span data-tr>diğer senaryo</span><span data-en>other scenarios</span></span>
+          <span class="delta up">+9% <span data-tr>ort.</span><span data-en>avg.</span></span>
+          <span class="tok">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- GECİKME ANALİZİ -->
+    <div class="card">
+      <h3>⏱ <span data-tr>Gecikme Analizi</span><span data-en>Latency Analysis</span></h3>
+      <div class="lat-row">
+        <div class="lat-head">
+          <span><span data-tr>p50 yanıt süresi</span><span data-en>p50 response time</span></span>
+          <span><span class="val">420ms</span><span class="diff">+80ms</span></span>
+        </div>
+        <div class="barbg"><div class="barfill" style="width:56%"></div><div class="baseline-tick" style="left:44%"></div></div>
+      </div>
+      <div class="lat-row">
+        <div class="lat-head">
+          <span><span data-tr>p95 yanıt süresi</span><span data-en>p95 response time</span></span>
+          <span><span class="val">1120ms</span><span class="diff">+310ms</span></span>
+        </div>
+        <div class="barbg"><div class="barfill warn" style="width:82%"></div><div class="baseline-tick" style="left:64%"></div></div>
+      </div>
+      <div class="lat-row">
+        <div class="lat-head">
+          <span><span data-tr>p99 yanıt süresi</span><span data-en>p99 response time</span></span>
+          <span><span class="val">2040ms</span><span class="diff">+790ms</span></span>
+        </div>
+        <div class="barbg"><div class="barfill warn" style="width:96%"></div><div class="baseline-tick" style="left:60%"></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="seclabel">
+    <span data-tr>Model Karşılaştırma Matrisi — aynı 86 senaryo</span>
+    <span data-en>Model Comparison Matrix — same 86 scenarios</span>
+  </div>
+  <div class="card" style="padding:6px 6px 10px;">
+    <div class="matrix-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th><span data-tr>Model</span><span data-en>Model</span></th>
+          <th class="num"><span data-tr>Girdi $/1M</span><span data-en>Input $/1M</span></th>
+          <th class="num"><span data-tr>Çıktı $/1M</span><span data-en>Output $/1M</span></th>
+          <th class="num"><span data-tr>Koşum maliyeti</span><span data-en>Run cost</span></th>
+          <th class="num">p50</th>
+          <th class="num">p95</th>
+          <th class="num"><span data-tr>Eval skoru</span><span data-en>Eval score</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="active">
+          <td class="model-name"><span class="swatch" style="background:#4FD1C5"></span>claude-sonnet-5 <span class="badge current"><span data-tr>şu an</span><span data-en>current</span></span></td>
+          <td class="num">$3.00</td>
+          <td class="num">$15.00</td>
+          <td class="num">$4.19</td>
+          <td class="num">420ms</td>
+          <td class="num">1120ms</td>
+          <td class="num"><span class="score good">94.2</span></td>
+        </tr>
+        <tr>
+          <td class="model-name"><span class="swatch" style="background:#8B8F9C"></span>claude-haiku-4.5</td>
+          <td class="num">$0.80</td>
+          <td class="num">$4.00</td>
+          <td class="num"><span class="badge cheapest"><span data-tr>en ucuz</span><span data-en>cheapest</span></span> $1.12</td>
+          <td class="num">190ms</td>
+          <td class="num">410ms</td>
+          <td class="num"><span class="score mid">88.6</span></td>
+        </tr>
+        <tr>
+          <td class="model-name"><span class="swatch" style="background:#E8A33D"></span>gpt-4.1-class</td>
+          <td class="num">$2.50</td>
+          <td class="num">$10.00</td>
+          <td class="num">$3.87</td>
+          <td class="num">510ms</td>
+          <td class="num">1340ms</td>
+          <td class="num"><span class="score good">92.8</span></td>
+        </tr>
+        <tr>
+          <td class="model-name"><span class="swatch" style="background:#E5677E"></span>llama-3.3-70b <span data-tr>(kendi barındırma)</span><span data-en>(self-hosted)</span></td>
+          <td class="num">$0.35</td>
+          <td class="num">$0.40</td>
+          <td class="num">$0.31</td>
+          <td class="num">760ms</td>
+          <td class="num">1980ms</td>
+          <td class="num"><span class="score low">79.4</span></td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b><span data-tr>Not:</span><span data-en>Note:</span></b>
+    <span data-tr>Bu ekran, prompt/kod değişikliğinin maliyet ve gecikme üzerindeki etkisini canlıya çıkmadan önce göstermek için tasarlanmış bir kavram prototipidir. Gerçek veriler; girdi/çıktı token sayıları, model bazlı birim fiyatlar ve ölçülen yanıt süreleri üzerinden hesaplanmalıdır.</span>
+    <span data-en>This screen is a concept prototype designed to surface the cost and latency impact of a prompt or code change before it reaches production. Real figures should be calculated from input/output token counts, per-model unit prices, and measured response times.</span>
+  </div>
+
+</div>
+
+<script>
+function setLang(lang){
+  document.documentElement.className = lang === 'en' ? 'lang-en' : '';
+  document.getElementById('btn-tr').classList.toggle('active', lang === 'tr');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+}
+</script>
+</body>
+</html>
